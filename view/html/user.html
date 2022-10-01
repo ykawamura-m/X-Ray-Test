@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    {{if eq .mode "NEW"}}
+    <title>ユーザー登録 - X-Ray-Test</title>
+    {{else}}
+    <title>ユーザー編集 - X-Ray-Test</title>
+    {{end}}
+    <link rel="stylesheet" href="/css/user.css">
+</head>
+
+<body>
+    <button onclick="location.href='./'">戻る</button>
+    {{if eq .mode "NEW"}}
+    <h1>ユーザー登録</h1>
+    {{else}}
+    <h1>ユーザー編集</h1>
+    {{end}}
+    <form action="save" method="post">
+        <table>
+            <tbody>
+                {{if eq .mode "EDIT"}}
+                <tr>
+                    <td>ID</td>
+                    <td><input name="id" type="text" value="{{.user.ID}}" readonly></td>
+                </tr>
+                {{end}}
+                <tr>
+                    <td>名前</td>
+                    <td><input name="name" type="text" value="{{.user.Name}}" required></td>
+                </tr>
+                <tr>
+                    <td>メールアドレス</td>
+                    <td><input name="email" type="email" value="{{.user.Email}}" required></td>
+                </tr>
+                <tr>
+                    <td>電話番号</td>
+                    <td><input name="tel" type="tel" value="{{.user.Tel}}" required></td>
+                </tr>
+                <tr>
+                    <td>登録先DB</td>
+                    <td>
+                        {{if eq .mode "NEW"}}
+                        <select name="db" value="{{.user.DB}}" required>
+                            <option value="1">MySQL</option>
+                            <option value="2">DynamoDB</option>
+                        </select>
+                        {{else}}
+                        <select name="db" value="{{.user.DB}}">
+                            <option value="1" disabled>MySQL</option>
+                            <option value="2" disabled>DynamoDB</option>
+                        </select>
+                        {{end}}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="footer">
+            {{if eq .mode "NEW"}}
+            <input type="submit" value="登録">
+            {{else}}
+            <input type="submit" value="保存">
+            {{end}}
+        </div>
+    </form>
+</body>
+
+<script>
+    window.onload = function () {
+        // セレクトボックスの初回選択がうまくいかないので力技で...
+        var db = document.getElementsByName("db")[0];
+        var value = db.getAttribute("value")
+        db.querySelector("option[value='" + value + "']").setAttribute("selected", "selected");
+        db.querySelector("option[value='" + value + "']").removeAttribute("disabled");
+    }
+</script>
+
+</html>

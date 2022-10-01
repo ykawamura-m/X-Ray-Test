@@ -1,0 +1,10 @@
+table,
+th,
+td {
+    border: 1px #000000 solid;
+    border-collapse: collapse;
+}
+
+.footer {
+    margin-top: 30px;
+}
