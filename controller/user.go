@@ -31,7 +31,7 @@ func User(c *gin.Context) {
 			c.AbortWithStatus(http.StatusInternalServerError)
 		}
 
-		user, err = repository.GetUser(paramID, db)
+		user, err = repository.GetUser(c, paramID, db)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 		}

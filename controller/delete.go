@@ -19,7 +19,7 @@ func Delete(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 	}
 
-	err = repository.DeleteUser(paramID, db)
+	err = repository.DeleteUser(c, paramID, db)
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 	}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"X-Ray-Test/model"
+	"context"
 	"crypto/rand"
 	"errors"
 	"sort"
@@ -27,12 +28,12 @@ const (
 
 // ユーザー登録
 // DBにユーザー情報を登録する
-func RegisterUser(name string, email string, tel string, db int) error {
+func RegisterUser(c context.Context, name string, email string, tel string, db int) error {
 	switch db {
 	case model.MYSQL:
-		return registerUser_MySQL(name, email, tel)
+		return registerUser_MySQL(c, name, email, tel)
 	case model.DYNAMO:
-		return registerUser_DynamoDB(name, email, tel)
+		return registerUser_DynamoDB(c, name, email, tel)
 	}
 
 	return errors.New("invalid db")
@@ -40,7 +41,7 @@ func RegisterUser(name string, email string, tel string, db int) error {
 
 // ユーザー登録
 // MySQLにユーザー情報を登録する
-func registerUser_MySQL(name string, email string, tel string) error {
+func registerUser_MySQL(c context.Context, name string, email string, tel string) error {
 	db, err := openMySQL()
 	if err != nil {
 		return err
@@ -60,12 +61,12 @@ func registerUser_MySQL(name string, email string, tel string) error {
 		DB:    model.MYSQL,
 	}
 
-	return db.Create(user).Error
+	return db.Create(user).WithContext(c).Error
 }
 
 // ユーザー登録
 // DynamoDBにユーザー情報を登録する
-func registerUser_DynamoDB(name string, email string, tel string) error {
+func registerUser_DynamoDB(c context.Context, name string, email string, tel string) error {
 	db := openDynamoDB()
 	table := db.Table(DYNAMO_TABLENAME)
 
@@ -77,17 +78,17 @@ func registerUser_DynamoDB(name string, email string, tel string) error {
 		DB:    model.DYNAMO,
 	}
 
-	return table.Put(user).Run()
+	return table.Put(user).RunWithContext(c)
 }
 
 // ユーザー更新
 // DBのユーザー情報を更新する
-func UpdateUser(id string, name string, email string, tel string, db int) error {
+func UpdateUser(c context.Context, id string, name string, email string, tel string, db int) error {
 	switch db {
 	case model.MYSQL:
-		return updateUser_MySQL(id, name, email, tel)
+		return updateUser_MySQL(c, id, name, email, tel)
 	case model.DYNAMO:
-		return updateUser_DynamoDB(id, name, email, tel)
+		return updateUser_DynamoDB(c, id, name, email, tel)
 	}
 
 	return errors.New("invalid db")
@@ -95,7 +96,7 @@ func UpdateUser(id string, name string, email string, tel string, db int) error 
 
 // ユーザー更新
 // MySQLのユーザー情報を更新する
-func updateUser_MySQL(id string, name string, email string, tel string) error {
+func updateUser_MySQL(c context.Context, id string, name string, email string, tel string) error {
 	db, err := openMySQL()
 	if err != nil {
 		return err
@@ -115,12 +116,12 @@ func updateUser_MySQL(id string, name string, email string, tel string) error {
 		DB:    model.MYSQL,
 	}
 
-	return db.Select("*").Updates(user).Error
+	return db.Select("*").Updates(user).WithContext(c).Error
 }
 
 // ユーザー更新
 // DynamoDBのユーザー情報を更新する
-func updateUser_DynamoDB(id string, name string, email string, tel string) error {
+func updateUser_DynamoDB(c context.Context, id string, name string, email string, tel string) error {
 	db := openDynamoDB()
 	table := db.Table(DYNAMO_TABLENAME)
 
@@ -132,17 +133,17 @@ func updateUser_DynamoDB(id string, name string, email string, tel string) error
 		DB:    model.DYNAMO,
 	}
 
-	return table.Put(user).Run()
+	return table.Put(user).RunWithContext(c)
 }
 
 // ユーザー削除
 // DBのユーザー情報を削除する
-func DeleteUser(id string, db int) error {
+func DeleteUser(c context.Context, id string, db int) error {
 	switch db {
 	case model.MYSQL:
-		return deleteUser_MySQL(id)
+		return deleteUser_MySQL(c, id)
 	case model.DYNAMO:
-		return deleteUser_DynamoDB(id)
+		return deleteUser_DynamoDB(c, id)
 	}
 
 	return errors.New("invalid db")
@@ -150,7 +151,7 @@ func DeleteUser(id string, db int) error {
 
 // ユーザー削除
 // MySQLのユーザー情報を削除する
-func deleteUser_MySQL(id string) error {
+func deleteUser_MySQL(c context.Context, id string) error {
 	db, err := openMySQL()
 	if err != nil {
 		return err
@@ -166,26 +167,26 @@ func deleteUser_MySQL(id string) error {
 		ID: id,
 	}
 
-	return db.Where("id = ?", user.ID).Delete(user).Error
+	return db.Where("id = ?", user.ID).Delete(user).WithContext(c).Error
 }
 
 // ユーザー削除
 // DynamoDBのユーザー情報を削除する
-func deleteUser_DynamoDB(id string) error {
+func deleteUser_DynamoDB(c context.Context, id string) error {
 	db := openDynamoDB()
 	table := db.Table(DYNAMO_TABLENAME)
 
-	return table.Delete("ID", id).Run()
+	return table.Delete("ID", id).RunWithContext(c)
 }
 
 // ユーザー取得
 // DBからユーザー情報を取得する
-func GetUser(id string, db int) (model.User, error) {
+func GetUser(c context.Context, id string, db int) (model.User, error) {
 	switch db {
 	case model.MYSQL:
-		return getUser_MySQL(id)
+		return getUser_MySQL(c, id)
 	case model.DYNAMO:
-		return getUser_DynamoDB(id)
+		return getUser_DynamoDB(c, id)
 	}
 
 	return model.User{}, errors.New("invalid db")
@@ -193,7 +194,7 @@ func GetUser(id string, db int) (model.User, error) {
 
 // ユーザー取得
 // MySQLからユーザー情報を取得する
-func getUser_MySQL(id string) (model.User, error) {
+func getUser_MySQL(c context.Context, id string) (model.User, error) {
 	var user model.User
 
 	db, err := openMySQL()
@@ -207,7 +208,7 @@ func getUser_MySQL(id string) (model.User, error) {
 	}
 	defer sqlDB.Close()
 
-	err = db.Where("id = ?", id).Take(&user).Error
+	err = db.Where("id = ?", id).Take(&user).WithContext(c).Error
 	if err != nil {
 		return user, err
 	}
@@ -217,28 +218,28 @@ func getUser_MySQL(id string) (model.User, error) {
 
 // ユーザー取得
 // DynamoDBからユーザー情報を取得する
-func getUser_DynamoDB(id string) (model.User, error) {
+func getUser_DynamoDB(c context.Context, id string) (model.User, error) {
 	db := openDynamoDB()
 	table := db.Table(DYNAMO_TABLENAME)
 
 	var user model.User
-	err := table.Get("ID", id).One(&user)
+	err := table.Get("ID", id).OneWithContext(c, &user)
 
 	return user, err
 }
 
 // 全ユーザー取得
 // DBから全てのユーザー情報を取得する
-func GetAllUsers() ([]model.User, error) {
+func GetAllUsers(c context.Context) ([]model.User, error) {
 	var users []model.User
 
-	tmp, err := getAllUsers_MySQL()
+	tmp, err := getAllUsers_MySQL(c)
 	if err != nil {
 		return nil, err
 	}
 	users = append(users, tmp...)
 
-	tmp, err = getAllUsers_DynamoDB()
+	tmp, err = getAllUsers_DynamoDB(c)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +254,7 @@ func GetAllUsers() ([]model.User, error) {
 
 // 全ユーザー取得
 // MySQLから全てのユーザー情報を取得する
-func getAllUsers_MySQL() ([]model.User, error) {
+func getAllUsers_MySQL(c context.Context) ([]model.User, error) {
 	db, err := openMySQL()
 	if err != nil {
 		return nil, err
@@ -266,7 +267,7 @@ func getAllUsers_MySQL() ([]model.User, error) {
 	defer sqlDB.Close()
 
 	var users []model.User
-	err = db.Find(&users).Error
+	err = db.Find(&users).WithContext(c).Error
 	if err != nil {
 		return nil, err
 	}
@@ -276,12 +277,12 @@ func getAllUsers_MySQL() ([]model.User, error) {
 
 // 全ユーザー取得
 // DynamoDBから全てのユーザー情報を取得する
-func getAllUsers_DynamoDB() ([]model.User, error) {
+func getAllUsers_DynamoDB(c context.Context) ([]model.User, error) {
 	db := openDynamoDB()
 	table := db.Table(DYNAMO_TABLENAME)
 
 	var users []model.User
-	err := table.Scan().All(&users)
+	err := table.Scan().AllWithContext(c, &users)
 
 	return users, err
 }
