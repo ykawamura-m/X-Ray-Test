@@ -23,12 +23,12 @@ func Save(c *gin.Context) {
 	}
 
 	if paramID == "" {
-		err := repository.RegisterUser(c, paramName, paramEmail, paramTel, db)
+		err := repository.RegisterUser(c.Request.Context(), paramName, paramEmail, paramTel, db)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 		}
 	} else {
-		err = repository.UpdateUser(c, paramID, paramName, paramEmail, paramTel, db)
+		err = repository.UpdateUser(c.Request.Context(), paramID, paramName, paramEmail, paramTel, db)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 		}

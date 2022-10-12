@@ -5,35 +5,28 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"os"
 	"sort"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-xray-sdk-go/xray"
+	driver "github.com/go-sql-driver/mysql"
 	"github.com/guregu/dynamo"
 	"github.com/oklog/ulid/v2"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-const (
-	MYSQL_USER       = "admin"
-	MYSQL_PASS       = "password"
-	MYSQL_HOST       = "x-ray-test.cdeh7vyviaaz.ap-northeast-1.rds.amazonaws.com"
-	MYSQL_PROTOCOL   = "tcp(" + MYSQL_HOST + ":3306)"
-	MYSQL_DBNAME     = "x_ray_test"
-	DYNAMO_REGION    = "ap-northeast-1"
-	DYNAMO_TABLENAME = "x-ray-test"
-)
-
 // ユーザー登録
 // DBにユーザー情報を登録する
-func RegisterUser(c context.Context, name string, email string, tel string, db int) error {
+func RegisterUser(ctx context.Context, name string, email string, tel string, db int) error {
 	switch db {
 	case model.MYSQL:
-		return registerUser_MySQL(c, name, email, tel)
+		return registerUser_MySQL(ctx, name, email, tel)
 	case model.DYNAMO:
-		return registerUser_DynamoDB(c, name, email, tel)
+		return registerUser_DynamoDB(ctx, name, email, tel)
 	}
 
 	return errors.New("invalid db")
@@ -41,7 +34,7 @@ func RegisterUser(c context.Context, name string, email string, tel string, db i
 
 // ユーザー登録
 // MySQLにユーザー情報を登録する
-func registerUser_MySQL(c context.Context, name string, email string, tel string) error {
+func registerUser_MySQL(ctx context.Context, name string, email string, tel string) error {
 	db, err := openMySQL()
 	if err != nil {
 		return err
@@ -61,14 +54,14 @@ func registerUser_MySQL(c context.Context, name string, email string, tel string
 		DB:    model.MYSQL,
 	}
 
-	return db.Create(user).WithContext(c).Error
+	return db.WithContext(ctx).Create(user).Error
 }
 
 // ユーザー登録
 // DynamoDBにユーザー情報を登録する
-func registerUser_DynamoDB(c context.Context, name string, email string, tel string) error {
+func registerUser_DynamoDB(ctx context.Context, name string, email string, tel string) error {
 	db := openDynamoDB()
-	table := db.Table(DYNAMO_TABLENAME)
+	table := db.Table(os.Getenv("DYNAMO_TABLENAME"))
 
 	user := model.User{
 		ID:    newUserID(),
@@ -78,17 +71,17 @@ func registerUser_DynamoDB(c context.Context, name string, email string, tel str
 		DB:    model.DYNAMO,
 	}
 
-	return table.Put(user).RunWithContext(c)
+	return table.Put(user).RunWithContext(ctx)
 }
 
 // ユーザー更新
 // DBのユーザー情報を更新する
-func UpdateUser(c context.Context, id string, name string, email string, tel string, db int) error {
+func UpdateUser(ctx context.Context, id string, name string, email string, tel string, db int) error {
 	switch db {
 	case model.MYSQL:
-		return updateUser_MySQL(c, id, name, email, tel)
+		return updateUser_MySQL(ctx, id, name, email, tel)
 	case model.DYNAMO:
-		return updateUser_DynamoDB(c, id, name, email, tel)
+		return updateUser_DynamoDB(ctx, id, name, email, tel)
 	}
 
 	return errors.New("invalid db")
@@ -96,7 +89,7 @@ func UpdateUser(c context.Context, id string, name string, email string, tel str
 
 // ユーザー更新
 // MySQLのユーザー情報を更新する
-func updateUser_MySQL(c context.Context, id string, name string, email string, tel string) error {
+func updateUser_MySQL(ctx context.Context, id string, name string, email string, tel string) error {
 	db, err := openMySQL()
 	if err != nil {
 		return err
@@ -116,14 +109,14 @@ func updateUser_MySQL(c context.Context, id string, name string, email string, t
 		DB:    model.MYSQL,
 	}
 
-	return db.Select("*").Updates(user).WithContext(c).Error
+	return db.WithContext(ctx).Select("*").Updates(user).Error
 }
 
 // ユーザー更新
 // DynamoDBのユーザー情報を更新する
-func updateUser_DynamoDB(c context.Context, id string, name string, email string, tel string) error {
+func updateUser_DynamoDB(ctx context.Context, id string, name string, email string, tel string) error {
 	db := openDynamoDB()
-	table := db.Table(DYNAMO_TABLENAME)
+	table := db.Table(os.Getenv("DYNAMO_TABLENAME"))
 
 	user := model.User{
 		ID:    id,
@@ -133,17 +126,17 @@ func updateUser_DynamoDB(c context.Context, id string, name string, email string
 		DB:    model.DYNAMO,
 	}
 
-	return table.Put(user).RunWithContext(c)
+	return table.Put(user).RunWithContext(ctx)
 }
 
 // ユーザー削除
 // DBのユーザー情報を削除する
-func DeleteUser(c context.Context, id string, db int) error {
+func DeleteUser(ctx context.Context, id string, db int) error {
 	switch db {
 	case model.MYSQL:
-		return deleteUser_MySQL(c, id)
+		return deleteUser_MySQL(ctx, id)
 	case model.DYNAMO:
-		return deleteUser_DynamoDB(c, id)
+		return deleteUser_DynamoDB(ctx, id)
 	}
 
 	return errors.New("invalid db")
@@ -151,7 +144,7 @@ func DeleteUser(c context.Context, id string, db int) error {
 
 // ユーザー削除
 // MySQLのユーザー情報を削除する
-func deleteUser_MySQL(c context.Context, id string) error {
+func deleteUser_MySQL(ctx context.Context, id string) error {
 	db, err := openMySQL()
 	if err != nil {
 		return err
@@ -167,26 +160,26 @@ func deleteUser_MySQL(c context.Context, id string) error {
 		ID: id,
 	}
 
-	return db.Where("id = ?", user.ID).Delete(user).WithContext(c).Error
+	return db.WithContext(ctx).Where("id = ?", user.ID).Delete(user).Error
 }
 
 // ユーザー削除
 // DynamoDBのユーザー情報を削除する
-func deleteUser_DynamoDB(c context.Context, id string) error {
+func deleteUser_DynamoDB(ctx context.Context, id string) error {
 	db := openDynamoDB()
-	table := db.Table(DYNAMO_TABLENAME)
+	table := db.Table(os.Getenv("DYNAMO_TABLENAME"))
 
-	return table.Delete("ID", id).RunWithContext(c)
+	return table.Delete("ID", id).RunWithContext(ctx)
 }
 
 // ユーザー取得
 // DBからユーザー情報を取得する
-func GetUser(c context.Context, id string, db int) (model.User, error) {
+func GetUser(ctx context.Context, id string, db int) (model.User, error) {
 	switch db {
 	case model.MYSQL:
-		return getUser_MySQL(c, id)
+		return getUser_MySQL(ctx, id)
 	case model.DYNAMO:
-		return getUser_DynamoDB(c, id)
+		return getUser_DynamoDB(ctx, id)
 	}
 
 	return model.User{}, errors.New("invalid db")
@@ -194,7 +187,7 @@ func GetUser(c context.Context, id string, db int) (model.User, error) {
 
 // ユーザー取得
 // MySQLからユーザー情報を取得する
-func getUser_MySQL(c context.Context, id string) (model.User, error) {
+func getUser_MySQL(ctx context.Context, id string) (model.User, error) {
 	var user model.User
 
 	db, err := openMySQL()
@@ -208,7 +201,7 @@ func getUser_MySQL(c context.Context, id string) (model.User, error) {
 	}
 	defer sqlDB.Close()
 
-	err = db.Where("id = ?", id).Take(&user).WithContext(c).Error
+	err = db.WithContext(ctx).Where("id = ?", id).Take(&user).Error
 	if err != nil {
 		return user, err
 	}
@@ -218,28 +211,28 @@ func getUser_MySQL(c context.Context, id string) (model.User, error) {
 
 // ユーザー取得
 // DynamoDBからユーザー情報を取得する
-func getUser_DynamoDB(c context.Context, id string) (model.User, error) {
+func getUser_DynamoDB(ctx context.Context, id string) (model.User, error) {
 	db := openDynamoDB()
-	table := db.Table(DYNAMO_TABLENAME)
+	table := db.Table(os.Getenv("DYNAMO_TABLENAME"))
 
 	var user model.User
-	err := table.Get("ID", id).OneWithContext(c, &user)
+	err := table.Get("ID", id).OneWithContext(ctx, &user)
 
 	return user, err
 }
 
 // 全ユーザー取得
 // DBから全てのユーザー情報を取得する
-func GetAllUsers(c context.Context) ([]model.User, error) {
+func GetAllUsers(ctx context.Context) ([]model.User, error) {
 	var users []model.User
 
-	tmp, err := getAllUsers_MySQL(c)
+	tmp, err := getAllUsers_MySQL(ctx)
 	if err != nil {
 		return nil, err
 	}
 	users = append(users, tmp...)
 
-	tmp, err = getAllUsers_DynamoDB(c)
+	tmp, err = getAllUsers_DynamoDB(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +247,7 @@ func GetAllUsers(c context.Context) ([]model.User, error) {
 
 // 全ユーザー取得
 // MySQLから全てのユーザー情報を取得する
-func getAllUsers_MySQL(c context.Context) ([]model.User, error) {
+func getAllUsers_MySQL(ctx context.Context) ([]model.User, error) {
 	db, err := openMySQL()
 	if err != nil {
 		return nil, err
@@ -267,7 +260,7 @@ func getAllUsers_MySQL(c context.Context) ([]model.User, error) {
 	defer sqlDB.Close()
 
 	var users []model.User
-	err = db.Find(&users).WithContext(c).Error
+	err = db.WithContext(ctx).Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
@@ -277,12 +270,12 @@ func getAllUsers_MySQL(c context.Context) ([]model.User, error) {
 
 // 全ユーザー取得
 // DynamoDBから全てのユーザー情報を取得する
-func getAllUsers_DynamoDB(c context.Context) ([]model.User, error) {
+func getAllUsers_DynamoDB(ctx context.Context) ([]model.User, error) {
 	db := openDynamoDB()
-	table := db.Table(DYNAMO_TABLENAME)
+	table := db.Table(os.Getenv("DYNAMO_TABLENAME"))
 
 	var users []model.User
-	err := table.Scan().AllWithContext(c, &users)
+	err := table.Scan().AllWithContext(ctx, &users)
 
 	return users, err
 }
@@ -296,12 +289,45 @@ func newUserID() string {
 
 // MySQL接続
 func openMySQL() (*gorm.DB, error) {
-	dsn := MYSQL_USER + ":" + MYSQL_PASS + "@" + MYSQL_PROTOCOL + "/" + MYSQL_DBNAME + "?charset=utf8mb4&parseTime=True&loc=Local"
-	return gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	config := driver.Config{
+		Net:                  "tcp",
+		User:                 os.Getenv("MYSQL_USER"),
+		Passwd:               os.Getenv("MYSQL_PASSWORD"),
+		Addr:                 os.Getenv("MYSQL_HOST"),
+		DBName:               os.Getenv("MYSQL_DBNAME"),
+		AllowNativePasswords: true,
+		ParseTime:            true,
+		Loc:                  time.UTC,
+		Params: map[string]string{
+			"charset": "utf8mb4",
+		},
+	}
+	instrumentedDB, err := xray.SQLContext("mysql", config.FormatDSN())
+	if err != nil {
+		return nil, err
+	}
+	// SkipInitializeWithVersion をtrueにしてバージョン情報取得を止めておく
+	// ctxを伝播してくれない（内部でcontext.Background()したのを使っている）ので、親セグメントが見つからずエラーになってしまう...
+	// MFではこの設定は入れてないのでどうやって対処するか...
+	dialector := mysql.New(mysql.Config{
+		Conn:                      instrumentedDB,
+		SkipInitializeWithVersion: true,
+	})
+	// DisableAutomaticPing をtrueにしてpingを止めておく
+	// ctxを伝播してくれない（内部でcontext.Background()したのを使っている）ので、親セグメントが見つからずエラーになってしまう...
+	// MFではこの設定は入れてないのでどうやって対処するか...
+	db, err := gorm.Open(dialector, &gorm.Config{
+		DisableAutomaticPing: true,
+	})
+	if err != nil {
+		return db, err
+	}
+	return db, nil
 }
 
 // DynamoDB接続
 func openDynamoDB() *dynamo.DB {
-	sess := session.Must(session.NewSession())
-	return dynamo.New(sess, &aws.Config{Region: aws.String(DYNAMO_REGION)})
+	baseSess := session.Must(session.NewSession())
+	sess := xray.AWSSession(baseSess)
+	return dynamo.New(sess, &aws.Config{Region: aws.String(os.Getenv("DYNAMO_REGION"))})
 }
