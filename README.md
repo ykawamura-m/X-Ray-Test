@@ -75,6 +75,7 @@ X-Rayのテスト用に作成したWebアプリケーションです。
     - MYSQL_DBNAME：MySQLのデータベース名
     - DYNAMO_REGION：DynamoDBのリージョン
     - DYNAMO_TABLENAME：DynamoDBのテーブル名
+    - AWS_XRAY_CONTEXT_MISSING: IGNORE_ERROR
 - ビルド
 ```
 cd /path/to/X-Ray-Test

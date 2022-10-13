@@ -306,19 +306,10 @@ func openMySQL() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// SkipInitializeWithVersion をtrueにしてバージョン情報取得を止めておく
-	// ctxを伝播してくれない（内部でcontext.Background()したのを使っている）ので、親セグメントが見つからずエラーになってしまう...
-	// MFではこの設定は入れてないのでどうやって対処するか...
 	dialector := mysql.New(mysql.Config{
-		Conn:                      instrumentedDB,
-		SkipInitializeWithVersion: true,
+		Conn: instrumentedDB,
 	})
-	// DisableAutomaticPing をtrueにしてpingを止めておく
-	// ctxを伝播してくれない（内部でcontext.Background()したのを使っている）ので、親セグメントが見つからずエラーになってしまう...
-	// MFではこの設定は入れてないのでどうやって対処するか...
-	db, err := gorm.Open(dialector, &gorm.Config{
-		DisableAutomaticPing: true,
-	})
+	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		return db, err
 	}

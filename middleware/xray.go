@@ -11,7 +11,7 @@ import (
 // X-Rayでトレースを行うためのミドルウェア
 func XrayMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx, seg := xray.BeginSegment(c, c.Request.RequestURI)
+		ctx, seg := xray.BeginSegment(c, c.Request.Method+" "+c.Request.URL.Path)
 		c.Request = c.Request.WithContext(ctx)
 
 		captureRequestData(c, seg)
