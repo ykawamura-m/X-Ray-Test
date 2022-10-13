@@ -9,7 +9,7 @@ import (
 )
 
 // ユーザー情報の保存処理
-// DynamoDBにユーザー情報を保存する
+// DBにユーザー情報を保存する
 func Save(c *gin.Context) {
 	paramID := c.PostForm("id")
 	paramName := c.PostForm("name")
