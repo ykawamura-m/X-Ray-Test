@@ -28,7 +28,7 @@ func User(c *gin.Context) {
 
 		db, err := strconv.Atoi(paramDB)
 		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
+			c.AbortWithStatus(http.StatusBadRequest)
 		}
 
 		user, err = repository.GetUser(c.Request.Context(), paramID, db)
